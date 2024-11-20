@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Materialien-Suche</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Materialien-Suche</h1>
+    <input type="text" id="searchBox" placeholder="Material suchen..." onkeyup="searchMaterial()">
+    <button onclick="sortList()">Sortiere nach ABC</button>
+    <ul id="materialList"></ul>
+
+    <script>
+        async function loadMaterials() {
+            const response = await fetch('/materials');
+            const materials = await response.json();
+            displayMaterials(materials);
+        }
+
+        function displayMaterials(materials) {
+            const list = document.getElementById('materialList');
+            list.innerHTML = '';
+            materials.forEach(material => {
+                const li = document.createElement('li');
+                li.textContent = material.Name + " - " + material.Category;
+                list.appendChild(li);
+            });
+        }
+
+        function searchMaterial() {
+            const input = document.getElementById('searchBox').value.toLowerCase();
+            const items = document.querySelectorAll('#materialList li');
+            items.forEach(item => {
+                if (item.textContent.toLowerCase().includes(input)) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function sortList() {
+            const list = document.getElementById('materialList');
+            Array.from(list.children)
+                .sort((a, b) => a.textContent.localeCompare(b.textContent))
+                .forEach(li => list.appendChild(li));
+        }
+
+        window.onload = loadMaterials;
+    </script>
+</body>
+</html>
