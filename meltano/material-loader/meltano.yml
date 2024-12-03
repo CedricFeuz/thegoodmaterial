@@ -1,0 +1,24 @@
+version: 1
+default_environment: dev
+project_id: 2879fc4d-28e6-42d3-bf21-2fd3de416d9e
+environments:
+  - name: dev
+  - name: staging
+  - name: prod
+plugins:
+  extractors:
+    - name: tap-csv
+      variant: meltanolabs
+      pip_url: git+https://github.com/MeltanoLabs/tap-csv.git
+      config:
+        files:
+          - entity: materials
+            path: ../../db/materials.csv
+            keys:
+              - Material
+  loaders:
+    - name: target-sqlite
+      variant: meltanolabs
+      pip_url: git+https://github.com/MeltanoLabs/target-sqlite.git
+      config:
+        database: ../../db/materials.db
