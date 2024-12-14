@@ -1,15 +1,18 @@
-# Basis-Image
+# Base image
 FROM python:3.9-slim
 
-# Arbeitsverzeichnis
+# Set the working directory inside the container
 WORKDIR /app
 
-# Anforderungen installieren
+# Copy the requirements file into the container
 COPY requirements.txt requirements.txt
+
+# Install the required Python packages
 RUN pip install -r requirements.txt
 
-# Flask-Code kopieren
+# Copy all application files into the container
 COPY . .
 
-# Flask-App starten
+# Command to start the Flask application
 CMD ["python", "app.py"]
+
