@@ -1,0 +1,70 @@
+#!/bin/bash                                                                                                                                                                                                                                     echo "Prüfen, ob CSV-Dateien gepusht wurden..."                                                                                                                                                                                                 # Pfade für das Bare Repository und die Arbeitskopie                                                                    GIT_DIR="/home/ubuntu/project-folder"                                                                                   WORK_TREE="/home/ubuntu/project-folder-working"                                                                                                                                                                                                 # Synchronisation des Arbeitsverzeichnisses                                                                             echo "Synchronisiere Repository im Arbeitsverzeichnis..."                                                               git --work-tree=$WORK_TREE --git-dir=$GIT_DIR checkout -f || { echo "Fehler beim Synchronisieren des Arbeitsverzeichnis>
+
+# Liste der geänderten Dateien abrufen
+CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+
+# Prüfen, ob eine CSV-Datei geändert wurde
+CSV_CHANGED=false
+for FILE in $CHANGED_FILES; do
+    if [[ $FILE == *.csv ]]; then
+        CSV_CHANGED=true
+        break
+    fi
+done
+# Falls keine CSV-Datei geändert wurde, keine weiteren Schritte ausführen
+if [ "$CSV_CHANGED" = false ]; then
+    echo "Keine CSV-Datei geändert. Automatisierung wird übersprungen."
+    exit 0
+fi
+
+# CSV-Validierung
+validate_csv() {
+    FILE=$1
+    echo "Validiere CSV-Datei: $FILE..."
+
+    # Überprüfen, ob die Datei existiert
+    if [ ! -f "$FILE" ]; then
+        echo "Fehler: Datei $FILE nicht gefunden."
+        return 1
+    fi
+
+    # Überprüfen, ob die CSV-Datei die erforderlichen Spalten enthält
+    REQUIRED_COLUMNS=("Material" "Kategorie")
+    HEADER=$(head -n 1 "$FILE")
+
+    for COLUMN in "${REQUIRED_COLUMNS[@]}"; do
+        if ! echo "$HEADER" | grep -q "$COLUMN"; then
+            echo "Fehler: Erforderliche Spalte '$COLUMN' fehlt in $FILE."
+            return 1
+        fi
+    done
+
+    echo "CSV-Datei $FILE ist gültig."
+    return 0
+}
+# Validierung vor Meltano-Ausführung
+CSV_FILE="$WORK_TREE/db/materials.csv"
+validate_csv $CSV_FILE
+if [ $? -ne 0 ]; then
+    echo "CSV-Validierung fehlgeschlagen. Automatisierung wird abgebrochen."
+    exit 1
+fi
+
+# Meltano ausführen
+echo "CSV-Datei erkannt. Meltano wird ausgeführt..."
+cd $WORK_TREE/meltano/material-loader || { echo "Fehler: Meltano-Projektverzeichnis nicht gefunden."; exit 1; }
+/home/ubuntu/.local/bin/meltano run tap-csv target-sqlite
+if [ $? -ne 0 ]; then
+    echo "Fehler beim Aktualisieren der Datenbank mit Meltano."
+    exit 1
+fi
+
+# Docker-Container neu bauen und starten
+echo "Docker-Container werden neu gebaut und gestartet..."
+cd $WORK_TREE/docker || { echo "Fehler: Docker-Verzeichnis nicht gefunden."; exit 1; }
+docker compose up --build -d
+if [ $? -ne 0 ]; then
+    echo "Fehler beim Neustart der Docker-Container."
+    exit 1
+fi
+echo "Automatisierung erfolgreich abgeschlossen."
